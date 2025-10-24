@@ -11,7 +11,7 @@ export default function HistoryScreen() {
   const fetchHistory = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://192.168.1.92:5000/history?email=${USER_EMAIL}`);
+      const response = await fetch(`http://192.168.1.98:5000/history?email=${USER_EMAIL}`);
       const data = await response.json();
       console.log('🔎 Resultado del backend:', data);
 
@@ -54,6 +54,11 @@ export default function HistoryScreen() {
           <Text style={styles.nutritionText}>Carbohidratos: {scan.nutrition.carbohydrates_total_g} g</Text>
           <Text style={styles.nutritionText}>Fibra: {scan.nutrition.fiber_g} g</Text>
           <Text style={styles.nutritionText}>Azúcares: {scan.nutrition.sugar_g} g</Text>
+
+          {/* ✅ Mostrar sugerencia del coach */}
+          {scan.sugerencia && (
+            <Text style={styles.suggestion}>💡 Sugerencia: {scan.sugerencia}</Text>
+          )}
         </View>
       ))}
     </ScrollView>
@@ -103,5 +108,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#ddd',
     marginBottom: 4,
+  },
+  suggestion: {
+    marginTop: 8,
+    fontSize: 16,
+    color: '#0ff',
+    fontStyle: 'italic',
   },
 });

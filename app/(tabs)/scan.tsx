@@ -18,6 +18,9 @@ export default function ScanScreen() {
   const CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/dkgheoxg5/upload';
   const UPLOAD_PRESET = 'fitai_preset';
 
+  // ⚠️ Deberías traer este email del login real (AuthContext o AsyncStorage)
+  const USER_EMAIL = 'hola.@gamil.com';
+
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -49,6 +52,7 @@ export default function ScanScreen() {
       setLoading(true);
       setResult(null);
 
+      // 1. Subir a Cloudinary
       const formData = new FormData();
       formData.append('file', {
         uri: imageUri,
@@ -63,31 +67,32 @@ export default function ScanScreen() {
       });
 
       const cloudData = await cloudRes.json();
-
       if (!cloudData.secure_url) throw new Error('Error al subir imagen a Cloudinary');
 
-      const analyzeRes = await fetch('http://192.168.1.92:5000/analyze-nutrition', {
+      // 2. Analizar con backend (incluye email)
+      const analyzeRes = await fetch('http://192.168.1.98:5000/analyze-nutrition', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl: cloudData.secure_url }),
+        body: JSON.stringify({ imageUrl: cloudData.secure_url, email: USER_EMAIL }),
       });
 
       const analyzeData = await analyzeRes.json();
-
       if (!analyzeRes.ok) {
         throw new Error(analyzeData.error || 'Error en análisis');
       }
 
       setResult(analyzeData);
 
-      await fetch('http://192.168.1.92:5000/save-scan', {
+      // 3. Guardar en historial (incluye sugerencia)
+      await fetch('http://192.168.1.98:5000/save-scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: 'hola.@gamil.com',
+          email: USER_EMAIL,
           imageUrl: cloudData.secure_url,
           food: analyzeData.food,
           nutrition: analyzeData.nutrition,
+          sugerencia: analyzeData.sugerencia,
         }),
       });
     } catch (error: any) {
@@ -111,7 +116,6 @@ export default function ScanScreen() {
           <Text style={styles.confidence}>Confianza: {(result.confidence * 100).toFixed(2)}%</Text>
 
           <Text style={styles.nutritionTitle}>Información Nutricional (por 100g):</Text>
-
           {result.nutrition.calories !== undefined && (
             <Text style={styles.nutritionText}>Calorías: {result.nutrition.calories} kcal</Text>
           )}
@@ -122,13 +126,20 @@ export default function ScanScreen() {
             <Text style={styles.nutritionText}>Grasas totales: {result.nutrition.fat_total_g} g</Text>
           )}
           {result.nutrition.carbohydrates_total_g !== undefined && (
-            <Text style={styles.nutritionText}>Carbohidratos: {result.nutrition.carbohydrates_total_g} g</Text>
+            <Text style={styles.nutritionText}>
+              Carbohidratos: {result.nutrition.carbohydrates_total_g} g
+            </Text>
           )}
           {result.nutrition.fiber_g !== undefined && (
             <Text style={styles.nutritionText}>Fibra: {result.nutrition.fiber_g} g</Text>
           )}
           {result.nutrition.sugar_g !== undefined && (
             <Text style={styles.nutritionText}>Azúcares: {result.nutrition.sugar_g} g</Text>
+          )}
+
+          {/* ✅ Sugerencia del coach */}
+          {result.sugerencia && (
+            <Text style={styles.suggestion}>💡 Sugerencia: {result.sugerencia}</Text>
           )}
         </View>
       )}
@@ -150,7 +161,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#121212', // fondo oscuro minimalista
+    backgroundColor: '#121212',
   },
   title: {
     fontSize: 24,
@@ -197,6 +208,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#ddd',
     marginBottom: 4,
+  },
+  suggestion: {
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0ff',
+    textAlign: 'center',
   },
   button: {
     backgroundColor: '#0f0',
